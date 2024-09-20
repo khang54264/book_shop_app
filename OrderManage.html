@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TRANG QUẢN LÝ CÁC ĐƠN HÀNG</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #fff5ee;
+      }
+      .order-list {
+        width: 100%;
+        margin: 20px auto;
+        border-collapse: collapse;
+      }
+      .order-list th,
+      .order-list td {
+        border: 1px solid #ddd;
+        padding: 8px;
+      }
+      .order-list th {
+        background-color: #f2f2f2;
+      }
+      .confirm-button {
+        background-color: #026a06;
+        color: white;
+        border: none;
+        padding: 5px 10px;
+        cursor: pointer;
+      }
+      .confirmed-button {
+        background-color: #808080;
+        color: white;
+        border: none;
+        padding: 5px 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>TRANG QUẢN LÝ CÁC ĐƠN HÀNG</h1>
+    <table class="order-list">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Người Đặt</th>
+          <th>Số Điện Thoại</th>
+          <th>Người Nhận</th>
+          <th>Địa Chỉ</th>
+          <th>Ngày</th>
+          <th>Sản Phẩm (Số Lượng)</th>
+          <th>Tổng Tiền</th>
+          <th>Trạng Thái</th>
+          <th>Hành Động</th>
+        </tr>
+      </thead>
+      <tbody id="orderTableBody"></tbody>
+    </table>
+
+    <script>
+      async function fetchOrders() {
+        try {
+          const response = await fetch(
+            `http://192.168.45.162:55571/DonHang/GetAllOrder`
+          );
+          const data = await response.json();
+
+          const orders = data;
+          const orderMap = {};
+
+          orders.forEach(order => {
+            if (!orderMap[order.maDonHang]) {
+              orderMap[order.maDonHang] = {
+                maDonHang: order.maDonHang,
+                ho: order.ho,
+                ten: order.ten,
+                soDienThoai: order.soDienThoai,
+                hoTen: order.hoTen,
+                diaChi: order.diaChi,
+                ngay: order.ngay,
+                items: [],
+                tongTien: order.tongTien,
+                trangThai: order.trangThai,
+              };
+            }
+            orderMap[order.maDonHang].items.push({
+              tenSach: order.tenSach,
+              soLuong: order.soLuong,
+            });
+          });
+
+          const tableBody = document.getElementById("orderTableBody");
+          tableBody.innerHTML = "";
+
+          Object.values(orderMap).forEach((order) => {
+            const row = document.createElement("tr");
+            const items = order.items
+              .map((item) => `${item.tenSach} <br>- Số Lượng: ${item.soLuong}`)
+              .join("<br>");
+            const formattedTotal = Number(order.tongTien).toLocaleString("vi-VN", {
+              style: "currency",
+              currency: "VND",
+            });
+
+            row.innerHTML = `
+              <td>${order.maDonHang}</td>
+              <td>${order.ho} ${order.ten}</td>
+              <td>${order.soDienThoai}</td>
+              <td>${order.hoTen}</td>
+              <td>${order.diaChi}</td>
+              <td>${order.ngay}</td>
+              <td>${items}</td>
+              <td>${formattedTotal}</td>
+              <td>${order.trangThai === 'Confirmed' ? "Đã xác nhận" : "Chờ xác nhận"}</td>
+              <td>${
+                order.trangThai === 'Pending'
+                  ? `<button class="confirm-button" onclick="Xacnhandonhang(${order.maDonHang})">Xác nhận</button>`
+                  : `<button class="confirmed-button" disabled>Đã xác nhận</button>`
+              }</td>
+`;
+            tableBody.appendChild(row);
+          });
+        } catch (error) {
+          console.error("Error fetching orders:", error);
+        }
+      }
+
+      async function Xacnhandonhang(orderId) {
+        try {
+            const response = await fetch(
+            `http://192.168.45.162:55571/DonHang/ConfirmOrder?madonhang=${orderId}`,
+            {
+              method: "POST",
+            }
+            );
+            fetchOrders();
+        } catch (error) {
+          console.error("Error confirming order:", error);
+        }
+      }
+
+      window.onload = fetchOrders;
+    </script>
+  </body>
+</html>
